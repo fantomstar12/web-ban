@@ -16,8 +16,14 @@ document.getElementById("loginBtn").onclick = async () => {
     localStorage.setItem("token", token);
     localStorage.setItem("username", data.username);
     localStorage.setItem("rank", data.rank);
-    showToast("✅ Logged in!");
-    navigate("/dashboard");
+    localStorage.setItem("canBan", data.canBan);
+    localStorage.setItem("canKick", data.canKick);
+
+    document.getElementById("userDisplay").innerHTML = `
+      <strong>${data.username}</strong><br>
+      <small>${data.rank}</small>
+    `;
+    route("/dashboard");
   } else {
     showToast("❌ " + data.error);
   }
@@ -26,45 +32,44 @@ document.getElementById("loginBtn").onclick = async () => {
 function logout() {
   token = "";
   localStorage.clear();
-  showToast("Logged out");
+  showToast("Logged out.");
+  route("/login");
 }
 
-function navigate(path) {
-  history.pushState({}, "", path);
-  route();
-}
-
-function showPage(pageId) {
-  document.querySelectorAll("section").forEach(s => s.classList.add("hidden"));
-  document.getElementById(pageId + "Page").classList.remove("hidden");
-}
-
-function route() {
-  const path = window.location.pathname;
-  token = localStorage.getItem("token");
+function route(path = window.location.pathname) {
+  const token = localStorage.getItem("token");
 
   if (path === "/dashboard") {
-    if (!token) return navigate("/login");
+    if (!token) return route("/login");
+    document.getElementById("loginPage").classList.add("hidden");
+    document.getElementById("dashboardPage").classList.remove("hidden");
+    loadLogs();
+
     document.getElementById("userDisplay").innerHTML = `
       <strong>${localStorage.getItem("username")}</strong><br>
       <small>${localStorage.getItem("rank")}</small>
     `;
-    showPage("dashboard");
-    loadLogs();
   } else {
-    showPage("login");
+    document.getElementById("dashboardPage").classList.add("hidden");
+    document.getElementById("loginPage").classList.remove("hidden");
   }
+
+  history.pushState({}, "", path);
 }
 
+window.addEventListener("load", () => route());
+window.addEventListener("popstate", () => route());
+
 async function banUser() {
+  if (localStorage.getItem("canBan") !== "true") return showToast("No permission to ban");
   const username = document.getElementById("targetUser").value;
   const res = await fetch("/ban", {
     method: "POST",
     headers: {
-      "Authorization": "Bearer " + token,
-      "Content-Type": "application/json"
+      Authorization: "Bearer " + token,
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify({ username })
+    body: JSON.stringify({ username }),
   });
   const data = await res.json();
   showToast(data.message || data.error);
@@ -76,10 +81,26 @@ async function unbanUser() {
   const res = await fetch("/unban", {
     method: "POST",
     headers: {
-      "Authorization": "Bearer " + token,
-      "Content-Type": "application/json"
+      Authorization: "Bearer " + token,
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify({ username })
+    body: JSON.stringify({ username }),
+  });
+  const data = await res.json();
+  showToast(data.message || data.error);
+  loadLogs();
+}
+
+async function kickUser() {
+  if (localStorage.getItem("canKick") !== "true") return showToast("No permission to kick");
+  const username = document.getElementById("targetUser").value;
+  const res = await fetch("/kick", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer " + token,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ username }),
   });
   const data = await res.json();
   showToast(data.message || data.error);
@@ -88,18 +109,18 @@ async function unbanUser() {
 
 async function loadLogs() {
   const res = await fetch("/logs", {
-    headers: { "Authorization": "Bearer " + token }
+    headers: { Authorization: "Bearer " + token },
   });
-  const data = await res.json();
+  const logs = await res.json();
   const table = document.getElementById("logTable");
-  table.innerHTML = "<tr><th>Action</th><th>Target</th><th>By</th><th>Time</th></tr>";
-  data.forEach(log => {
+  table.innerHTML = "<tr><th>Action</th><th>User</th><th>By</th><th>Time</th></tr>";
+  logs.reverse().forEach(log => {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${log.action}</td>
       <td>${log.target}</td>
       <td>${log.executor}</td>
-      <td>${new Date(log.timestamp).toLocaleString()}</td>
+      <td>${new Date(log.time).toLocaleString()}</td>
     `;
     table.appendChild(row);
   });
@@ -109,8 +130,5 @@ function showToast(msg) {
   const toast = document.getElementById("toast");
   toast.textContent = msg;
   toast.style.display = "block";
-  setTimeout(() => toast.style.display = "none", 3000);
+  setTimeout(() => (toast.style.display = "none"), 3000);
 }
-
-window.addEventListener("popstate", route);
-window.addEventListener("load", route);
