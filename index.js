@@ -8,25 +8,21 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-const SECRET_KEY = "AUSTIN_IS_A_GOODBOY@gHjkLoIuNGfda"; // Change this to something secret
+const SECRET_KEY = "banpanel_secret_key";
 
-// 🔐 Simple user login (no bcrypt)
+// ✅ Users with rank
 const users = {
-  Austin: "austin234@",
-  Veltrix: "veltrixpriv@",
-  Vile: "vilesecuredtokenpassww123"
+  veltrix: { password: "1234", rank: "Co-Founder" },
+  austin: { password: "mod123", rank: "Moderator" },
 };
 
-// ☠️ In-memory ban list + logs
 const bannedUsers = new Set();
-const banLog = [];
+const logs = [];
 
-// 🔒 JWT Auth Middleware
 function authenticate(req, res, next) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: "Missing token" });
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(401).json({ error: "No token" });
 
-  const token = authHeader.split(" ")[1];
   jwt.verify(token, SECRET_KEY, (err, user) => {
     if (err) return res.status(403).json({ error: "Invalid token" });
     req.user = user;
@@ -34,70 +30,47 @@ function authenticate(req, res, next) {
   });
 }
 
-// 📦 Log helper
-function logAction(action, executor, target) {
-  banLog.push({
-    action,
-    executor,
-    target,
-    timestamp: new Date().toISOString(),
-  });
-}
-
-// 🔐 Login route
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
-  const realPassword = users[username];
-  if (!realPassword || realPassword !== password) {
+  const user = users[username];
+  if (!user || user.password !== password) {
     return res.status(401).json({ error: "Invalid credentials" });
   }
 
-  const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: "2h" });
-  res.json({ token });
+  const token = jwt.sign({ username, rank: user.rank }, SECRET_KEY, { expiresIn: "2h" });
+  res.json({ token, username, rank: user.rank });
 });
 
-// ✅ Ban route
-app.post("/ban", authenticate, (req, res) => {
-  const { username } = req.body;
-  if (!username) return res.status(400).json({ error: "Missing username" });
-
-  const clean = username.toLowerCase();
-  bannedUsers.add(clean);
-  logAction("ban", req.user.username, clean);
-
-  res.json({ success: true, message: `${username} has been banned.` });
-});
-
-// 🔓 Unban route
-app.post("/unban", authenticate, (req, res) => {
-  const { username } = req.body;
-  if (!username) return res.status(400).json({ error: "Missing username" });
-
-  const clean = username.toLowerCase();
-  bannedUsers.delete(clean);
-  logAction("unban", req.user.username, clean);
-
-  res.json({ success: true, message: `${username} has been unbanned.` });
-});
-
-// 🕵️‍♂️ Check ban status (for Roblox)
 app.get("/check/:username", (req, res) => {
-  const clean = req.params.username.toLowerCase();
-  res.json({ banned: bannedUsers.has(clean) });
+  const uname = req.params.username.toLowerCase();
+  res.json({ banned: bannedUsers.has(uname) });
 });
 
-// 📋 Ban list
-app.get("/banlist", authenticate, (req, res) => {
-  res.json([...bannedUsers]);
+app.post("/ban", authenticate, (req, res) => {
+  const uname = req.body.username?.toLowerCase();
+  if (!uname) return res.status(400).json({ error: "Missing username" });
+
+  bannedUsers.add(uname);
+  logs.push({ action: "Banned", target: uname, executor: req.user.username, timestamp: Date.now() });
+  res.json({ success: true, message: `${uname} has been banned.` });
 });
 
-// 📜 Logs
-app.get("/logs", authenticate, (req, res) => {
-  res.json(banLog);
+app.post("/unban", authenticate, (req, res) => {
+  const uname = req.body.username?.toLowerCase();
+  if (!uname) return res.status(400).json({ error: "Missing username" });
+
+  bannedUsers.delete(uname);
+  logs.push({ action: "Unbanned", target: uname, executor: req.user.username, timestamp: Date.now() });
+  res.json({ success: true, message: `${uname} has been unbanned.` });
 });
 
-// 🚀 Start server
+app.get("/logs", authenticate, (req, res) => res.json(logs));
+app.get("/banlist", authenticate, (req, res) => res.json([...bannedUsers]));
+
+// ✅ Route frontend URLs
+app.get("/login", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+app.get("/dashboard", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+app.get("*", (req, res) => res.redirect("/login"));
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🔥 Server running on http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
