@@ -12,7 +12,8 @@ const SECRET_KEY = "AUSTIN_IS_A_GOODBOY@gHjkLoIuNGfda"; // Change this to someth
 
 // 🔐 Simple user login (no bcrypt)
 const users = {
-  administrator: "admin123",
+  Austin: "austin234@",
+  Veltrix: "veltrixpriv@"
 };
 
 // ☠️ In-memory ban list + logs
