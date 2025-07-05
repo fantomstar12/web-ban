@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ban Panel</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="container">
+    <div id="loginForm" class="card fade-in">
+      <h2>Login</h2>
+      <input type="text" id="username" placeholder="Username" />
+      <input type="password" id="password" placeholder="Password" />
+      <button id="loginBtn">Login</button>
+    </div>
+
+    <div id="adminPanel" class="card fade-in" style="display: none;">
+      <h2>Ban / Unban Panel</h2>
+      <input type="text" id="targetUser" placeholder="Target Username" />
+      <div class="buttons">
+        <button onclick="banUser()">Ban</button>
+        <button onclick="unbanUser()">Unban</button>
+        <button onclick="logout()">Logout</button>
+      </div>
+
+      <hr>
+
+      <h3>Currently Banned Users</h3>
+      <ul id="banList"></ul>
+
+      <h3>Action Logs</h3>
+      <table id="logTable">
+        <tr><th>Action</th><th>User</th><th>By</th><th>Time</th></tr>
+      </table>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
