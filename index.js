@@ -8,12 +8,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-const SECRET_KEY = "banpanel_secret_key";
+const SECRET_KEY = "BANPANEL_SECRET";
 
-// ✅ Users with rank
 const users = {
-  veltrix: { password: "1234", rank: "Co-Founder" },
-  austin: { password: "mod123", rank: "Moderator" },
+  veltrix: { password: "1234", rank: "Co-Founder", canBan: true, canKick: true },
+  austin: { password: "mod123", rank: "Moderator", canBan: false, canKick: true },
 };
 
 const bannedUsers = new Set();
@@ -33,44 +32,58 @@ function authenticate(req, res, next) {
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
   const user = users[username];
-  if (!user || user.password !== password) {
+  if (!user || user.password !== password)
     return res.status(401).json({ error: "Invalid credentials" });
-  }
 
-  const token = jwt.sign({ username, rank: user.rank }, SECRET_KEY, { expiresIn: "2h" });
-  res.json({ token, username, rank: user.rank });
+  const token = jwt.sign({
+    username,
+    rank: user.rank,
+    canBan: user.canBan,
+    canKick: user.canKick
+  }, SECRET_KEY, { expiresIn: "2h" });
+
+  res.json({ token, username, rank: user.rank, canBan: user.canBan, canKick: user.canKick });
 });
 
 app.get("/check/:username", (req, res) => {
-  const uname = req.params.username.toLowerCase();
-  res.json({ banned: bannedUsers.has(uname) });
+  res.json({ banned: bannedUsers.has(req.params.username.toLowerCase()) });
 });
 
 app.post("/ban", authenticate, (req, res) => {
-  const uname = req.body.username?.toLowerCase();
-  if (!uname) return res.status(400).json({ error: "Missing username" });
+  if (!req.user.canBan) return res.status(403).json({ error: "Permission denied" });
+  const username = req.body.username?.toLowerCase();
+  if (!username) return res.status(400).json({ error: "Missing username" });
 
-  bannedUsers.add(uname);
-  logs.push({ action: "Banned", target: uname, executor: req.user.username, timestamp: Date.now() });
-  res.json({ success: true, message: `${uname} has been banned.` });
+  bannedUsers.add(username);
+  logs.push({ action: "Ban", target: username, executor: req.user.username, time: Date.now() });
+  res.json({ success: true, message: `${username} banned.` });
 });
 
 app.post("/unban", authenticate, (req, res) => {
-  const uname = req.body.username?.toLowerCase();
-  if (!uname) return res.status(400).json({ error: "Missing username" });
-
-  bannedUsers.delete(uname);
-  logs.push({ action: "Unbanned", target: uname, executor: req.user.username, timestamp: Date.now() });
-  res.json({ success: true, message: `${uname} has been unbanned.` });
+  const username = req.body.username?.toLowerCase();
+  bannedUsers.delete(username);
+  logs.push({ action: "Unban", target: username, executor: req.user.username, time: Date.now() });
+  res.json({ success: true, message: `${username} unbanned.` });
 });
 
-app.get("/logs", authenticate, (req, res) => res.json(logs));
-app.get("/banlist", authenticate, (req, res) => res.json([...bannedUsers]));
+app.post("/kick", authenticate, (req, res) => {
+  if (!req.user.canKick) return res.status(403).json({ error: "Permission denied" });
+  const username = req.body.username?.toLowerCase();
+  logs.push({ action: "Kick", target: username, executor: req.user.username, time: Date.now() });
+  res.json({ success: true, message: `${username} kicked.` });
+});
 
-// ✅ Route frontend URLs
+app.get("/logs", authenticate, (req, res) => {
+  res.json(logs);
+});
+
+app.get("/banlist", authenticate, (req, res) => {
+  res.json([...bannedUsers]);
+});
+
+// Serve pages
 app.get("/login", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 app.get("/dashboard", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 app.get("*", (req, res) => res.redirect("/login"));
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+app.listen(3000, () => console.log("🔥 Ban Panel running on http://localhost:3000"));
