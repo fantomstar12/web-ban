@@ -3,43 +3,38 @@
 <head>
   <meta charset="UTF-8" />
   <title>Ban Panel</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<div class="app">
-  <aside class="sidebar">
-    <h2>🔥 BanPanel</h2>
-    <div id="userDisplay" class="user-info"></div>
-    <nav>
-      <button onclick="navigate('/dashboard')">📊 Dashboard</button>
-      <button onclick="navigate('/login'); logout()">🚪 Logout</button>
-    </nav>
-  </aside>
-
-  <main>
+  <div class="container">
     <!-- Login -->
-    <section id="loginPage" class="card hidden">
-      <h2>Login</h2>
-      <input id="username" placeholder="Username" />
-      <input id="password" type="password" placeholder="Password" />
+    <div id="loginPage" class="card">
+      <h2>Admin Login</h2>
+      <input id="username" placeholder="Username">
+      <input id="password" placeholder="Password" type="password">
       <button id="loginBtn">Login</button>
-    </section>
+    </div>
 
     <!-- Dashboard -->
-    <section id="dashboardPage" class="hidden">
-      <h2>📊 Dashboard</h2>
-      <input id="targetUser" placeholder="Target Username" />
-      <div class="row">
+    <div id="dashboardPage" class="card hidden">
+      <div class="header">
+        <h2>Dashboard</h2>
+        <div id="userDisplay"></div>
+        <button onclick="logout()">Logout</button>
+      </div>
+
+      <input id="targetUser" placeholder="Username to act on">
+      <div class="actions">
         <button onclick="banUser()">Ban</button>
         <button onclick="unbanUser()">Unban</button>
+        <button onclick="kickUser()">Kick</button>
       </div>
+
       <h3>Logs</h3>
-      <table id="logTable"><tr><th>Action</th><th>Target</th><th>By</th><th>Time</th></tr></table>
-    </section>
-  </main>
-</div>
-<div id="toast"></div>
-<script src="app.js"></script>
+      <table id="logTable"><tr><th>Action</th><th>User</th><th>By</th><th>Time</th></tr></table>
+    </div>
+  </div>
+  <div id="toast"></div>
+  <script src="app.js"></script>
 </body>
 </html>
